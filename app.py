@@ -80,36 +80,45 @@ def answer_from_knowledgebase(message):
         return "Sorry, I couldn't retrieve an answer."
 
 def search_knowledgebase(message):
-    # TODO: Write your code here
-    sources = ""
-    return sources
+    try:
+        res = qa.invoke({"query": message})
+        source_docs = res.get('source_documents', [])
+        if not source_docs:
+            return "No sources found for your query."
+        sources = ""
+        for count, source in enumerate(source_docs, 1):
+            sources += f"Source {count}\n{source.page_content}\n"
+        return sources
+    except Exception as e:
+        print("Error during source retrieval:", e)
+        return "Error retrieving sources."
 
 def answer_as_chatbot(message):
     global conversation_history
     
     try:
-        logger.debug(f"Received message: {message}")
+        # logger.debug(f"Received message: {message}")
         
         # Add user message to conversation history
         conversation_history.append(HumanMessage(content=message))
-        logger.debug(f"Conversation history: {conversation_history}")
+        # logger.debug(f"Conversation history: {conversation_history}")
         
         # Invoke the LLM with the full conversation history
-        logger.debug("Calling LLM...")
+        # logger.debug("Calling LLM...")
         response = llm.invoke(conversation_history)
-        logger.debug(f"LLM Response: {response}")
+        # logger.debug(f"LLM Response: {response}")
         
         # Add AI response to conversation history
         conversation_history.append(response)
         
         # Extract the text content from the response
         response_text = response.content if hasattr(response, 'content') else str(response)
-        logger.debug(f"Returning response: {response_text}")
+        # logger.debug(f"Returning response: {response_text}")
         
         return response_text
     
     except Exception as e:
-        logger.error(f"Error in answer_as_chatbot: {str(e)}", exc_info=True)
+        # logger.error(f"Error in answer_as_chatbot: {str(e)}", exc_info=True)
         return f"Error: Unable to get response from chatbot. {str(e)}"
 
 @app.route('/kbanswer', methods=['POST'])
@@ -120,26 +129,39 @@ def kbanswer():
             return jsonify({'error': 'No message provided'}), 400
         
         message = data['message']
-        logger.debug(f"Received message from UI: {message}")
+        # logger.debug(f"Received message from UI: {message}")
         
         # Generate a response
         response_message = answer_from_knowledgebase(message)
-        logger.debug(f"Response from chatbot: {response_message}")
+        # logger.debug(f"Response from chatbot: {response_message}")
         
         # Return the response as JSON
         return jsonify({'message': response_message}), 200
     
     except Exception as e:
-        logger.error(f"Error in /answer endpoint: {str(e)}", exc_info=True)
+        # logger.error(f"Error in /answer endpoint: {str(e)}", exc_info=True)
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/search', methods=['POST'])
 def search():    
-    # Search the knowledgebase and generate a response
-    # (call search_knowledgebase())
+    try:
+        data = request.json
+        if not data or 'message' not in data:
+            return jsonify({'error': 'No message provided'}), 400
+        
+        message = data['message']
+        # logger.debug(f"Received message from UI: {message}")
+        
+        # Generate a response
+        response_message = search_knowledgebase(message)
+        # logger.debug(f"Response from chatbot: {response_message}")
+        
+        # Return the response as JSON
+        return jsonify({'message': response_message}), 200
     
-    # Return the response as JSON
-    return
+    except Exception as e:
+        # logger.error(f"Error in /answer endpoint: {str(e)}", exc_info=True)
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route('/answer', methods=['POST'])
 def answer():
@@ -149,17 +171,17 @@ def answer():
             return jsonify({'error': 'No message provided'}), 400
         
         message = data['message']
-        logger.debug(f"Received message from UI: {message}")
+        # logger.debug(f"Received message from UI: {message}")
         
         # Generate a response
         response_message = answer_as_chatbot(message)
-        logger.debug(f"Response from chatbot: {response_message}")
+        # logger.debug(f"Response from chatbot: {response_message}")
         
         # Return the response as JSON
         return jsonify({'message': response_message}), 200
     
     except Exception as e:
-        logger.error(f"Error in /answer endpoint: {str(e)}", exc_info=True)
+        # logger.error(f"Error in /answer endpoint: {str(e)}", exc_info=True)
         return jsonify({'error': f'Server error: {str(e)}'}), 500
 
 @app.route("/")
